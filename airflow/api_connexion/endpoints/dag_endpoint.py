@@ -206,16 +206,16 @@ def allowed_file(filename):
 
 @security.requires_access([(permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG)])
 @provide_session
-def create_dag():
-    if 'file' not in request.files:
-        flash('No file part')
-        return {"message": "No file"}
-    file = request.files['file']
-    if file.filename=='':
-        flash("No selected file")
-        return {"message": "No file"}
-    if not allowed_file(file.filename):
-        return {"message": "Only .py files are allowed"}
-    filename = secure_filename(file.filename)
-    file.save(os.path.join(UPLOAD_FOLDER, filename))
-    return {"message": "Your dag has been created!"}
+def create_dag(session: Session = NEW_SESSION):
+    try:
+        file = request.files.get('dagfile')
+        if file.filename=='':
+            flash("No selected file")
+            return {"message": "No file"}
+        if not allowed_file(file.filename):
+            return {"message": "Only .py files are allowed"}
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(UPLOAD_FOLDER, filename))
+        return {"message": "Your dag has been created!"}
+    except Exception as error:
+        return {"message": error}

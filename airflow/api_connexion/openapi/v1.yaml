@@ -437,14 +437,24 @@ paths:
       tags: [DAG]
       requestBody:
         content:
-          text/x-python: {}
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                dagfile:
+                  type: string
+                  format: binary
       responses:
         '200':
           description: succeeded
-          content: {}
+          content:
+            application/json: 
+              schema: {}
         '404':
           description: failed
-          content: {}
+          content:
+            application/json: 
+              schema: {}
 
 
 
