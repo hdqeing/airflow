@@ -20,10 +20,11 @@ from http import HTTPStatus
 from typing import TYPE_CHECKING, Collection
 
 from connexion import NoContent
-from flask import g, request
+from flask import g, request, flash
 from marshmallow import ValidationError
 from sqlalchemy import select, update
 from sqlalchemy.sql.expression import or_
+from werkzeug.utils import secure_filename
 
 from airflow.api_connexion import security
 from airflow.api_connexion.exceptions import AlreadyExists, BadRequest, NotFound
@@ -40,6 +41,11 @@ from airflow.security import permissions
 from airflow.utils.airflow_flask_app import get_airflow_app
 from airflow.utils.db import get_query_count
 from airflow.utils.session import NEW_SESSION, provide_session
+from airflow import settings
+import os
+
+UPLOAD_FOLDER=settings.DAGS_FOLDER
+ALLOWED_EXTENSION={'py'}
 
 if TYPE_CHECKING:
     from sqlalchemy.orm import Session
@@ -194,3 +200,22 @@ def delete_dag(dag_id: str, session: Session = NEW_SESSION) -> APIResponse:
         raise AlreadyExists(detail=f"Task instances of dag with id: '{dag_id}' are still running")
 
     return NoContent, HTTPStatus.NO_CONTENT
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSION
+
+@security.requires_access([(permissions.ACTION_CAN_CREATE, permissions.RESOURCE_DAG)])
+@provide_session
+def create_dag(session: Session = NEW_SESSION):
+    try:
+        file = request.files.get('dagfile')
+        if file.filename=='':
+            flash("No selected file")
+            return {"message": "No file"}
+        if not allowed_file(file.filename):
+            return {"message": "Only .py files are allowed"}
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(UPLOAD_FOLDER, filename))
+        return {"message": "Your dag has been created!"}
+    except Exception as error:
+        return {"message": error}
